@@ -7,6 +7,13 @@ NM_CONN_PATH="/etc/NetworkManager/system-connections"
 # this flag tracks if any config change was made
 nm_config_changed=0
 MANAGED_NM_CONN_SUFFIX="-slave-ovs-clone"
+
+get_iface_attr() {
+  local iface=$1
+  local attr=$2
+  nmstatectl show --json |jq -r --arg attr "$attr" --arg iface "$iface" '.interfaces[] | select(.name == $iface) |.[$attr]'
+}
+
 # Workaround to ensure OVS is installed due to bug in systemd Requires:
 # https://bugzilla.redhat.com/show_bug.cgi?id=1888017
 copy_nm_conn_files() {
@@ -126,13 +133,14 @@ convert_to_bridge() {
   fi
   # find the MAC from OVS config or the default interface to use for OVS internal port
   # this prevents us from getting a different DHCP lease and dropping connection
-  if ! iface_mac=$(<"/sys/class/net/${iface}/address"); then
+  iface_mac=$(get_iface_attr $iface mac-address)
+  if [[ -z "$iface_mac" ]]; then
     echo "Unable to determine default interface MAC"
     exit 1
   fi
   echo "MAC address found for iface: ${iface}: ${iface_mac}"
   # find MTU from original iface
-  iface_mtu=$(ip link show "$iface" | awk '{print $5; exit}')
+  iface_mtu=$(get_iface_attr $iface mtu)
   if [[ -z "$iface_mtu" ]]; then
     echo "Unable to determine default interface MTU, defaulting to 1500"
     iface_mtu=1500
@@ -158,7 +166,7 @@ convert_to_bridge() {
     ovs-vsctl --timeout=30 --if-exists del-port "$bridge_name" "$bridge_name"
     nmcli c add type ovs-port conn.interface "$bridge_name" master "$bridge_name" con-name "$ovs_port"
   fi
-  iface_type=$(nmstatectl show --json |jq -r --arg iface "$iface" '.interfaces[] | select(.name == $iface) |.type')
+  iface_type=$(get_iface_attr $iface "type")
   extra_phys_args=()
   # check if this interface is a vlan, bond, team, or ethernet type
   if [ "$iface_type" == "vlan" ]; then
