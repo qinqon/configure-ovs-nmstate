@@ -158,10 +158,10 @@ convert_to_bridge() {
     ovs-vsctl --timeout=30 --if-exists del-port "$bridge_name" "$bridge_name"
     nmcli c add type ovs-port conn.interface "$bridge_name" master "$bridge_name" con-name "$ovs_port"
   fi
+  iface_type=$(nmstatectl show --json |jq -r --arg iface "$iface" '.interfaces[] | select(.name == $iface) |.type')
   extra_phys_args=()
   # check if this interface is a vlan, bond, team, or ethernet type
-  if [ $(nmcli --get-values connection.type conn show ${old_conn}) == "vlan" ]; then
-    iface_type=vlan
+  if [ "$iface_type" == "vlan" ]; then
     vlan_id=$(nmcli --get-values vlan.id conn show ${old_conn})
     if [ -z "$vlan_id" ]; then
       echo "ERROR: unable to determine vlan_id for vlan connection: ${old_conn}"
@@ -173,15 +173,13 @@ convert_to_bridge() {
       exit 1
     fi
     extra_phys_args=( dev "${vlan_parent}" id "${vlan_id}" )
-  elif [ $(nmcli --get-values connection.type conn show ${old_conn}) == "bond" ]; then
-    iface_type=bond
+  elif [ "$iface_type" == "bond" ]; then
     # check bond options
     bond_opts=$(nmcli --get-values bond.options conn show ${old_conn})
     if [ -n "$bond_opts" ]; then
       extra_phys_args+=( bond.options "${bond_opts}" )
     fi
-  elif [ $(nmcli --get-values connection.type conn show ${old_conn}) == "team" ]; then
-    iface_type=team
+  elif [ "$iface_type" == "team" ]; then
     # check team config options
     team_config_opts=$(nmcli --get-values team.config -e no conn show ${old_conn})
     if [ -n "$team_config_opts" ]; then
@@ -191,6 +189,35 @@ convert_to_bridge() {
   else
     iface_type=802-3-ethernet
   fi
+  cat <<EOF | tee state.yaml
+---
+interfaces:
+  - name: ${bridge_name}
+    type: ovs-interface
+    state: up
+    mac-address: "52:54:00:FF:1D:B2"
+    mtu: ${iface_mtu}
+    ipv4:
+      enabled: true
+      dhcp: true
+    ipv6:
+      enabled: true
+      dhcp: true
+  - name: ${bridge_name}
+    type: ovs-bridge
+    state: up
+    ipv4:
+      enabled: true
+      dhcp: true
+    ipv6:
+      enabled: true
+      dhcp: true
+      autoconf: true
+    bridge:
+      port:
+        - name: ${iface}
+        - name: ${bridge_name}
+EOF
   # use ${extra_phys_args[@]+"${extra_phys_args[@]}"} instead of ${extra_phys_args[@]} to be compatible with bash 4.2 in RHEL7.9
   if ! nmcli connection show "$bridge_interface_name" &> /dev/null; then
     ovs-vsctl --timeout=30 --if-exists destroy interface ${iface}
