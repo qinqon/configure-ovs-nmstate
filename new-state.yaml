@@ -1,0 +1,27 @@
+---
+interfaces:
+  - name: br-ex
+    type: ovs-interface
+    state: up
+    mac-address: "52:54:00:FF:1D:B2"
+    mtu: 1500
+    ipv4:
+      enabled: true
+      dhcp: true
+    ipv6:
+      enabled: true
+      dhcp: true
+  - name: br-ex
+    type: ovs-bridge
+    state: up
+    ipv4:
+      enabled: true
+      dhcp: true
+    ipv6:
+      enabled: true
+      dhcp: true
+      autoconf: true
+    bridge:
+      port:
+        - name: eth0
+        - name: br-ex
