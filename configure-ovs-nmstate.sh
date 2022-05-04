@@ -203,7 +203,7 @@ interfaces:
   - name: ${bridge_name}
     type: ovs-interface
     state: up
-    mac-address: "52:54:00:FF:1D:B2"
+    mac-address: "${iface_mac}"
     mtu: ${iface_mtu}
     ipv4:
       enabled: true
