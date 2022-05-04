@@ -5,16 +5,10 @@ configure-ovs:
  cmds:  
    - echo fedora | passwd --stdin fedora
    - echo root | passwd --stdin root
-   - dnf install -b -y vim openvswitch NetworkManager-ovs dnf-plugins-core jq
+   - dnf install -b -y git vim openvswitch NetworkManager-ovs dnf-plugins-core jq
    - systemctl enable openvswitch
    - systemctl start openvswitch
    - systemctl restart NetworkManager
    - dnf copr enable -y nmstate/nmstate-git 
    - dnf install -y nmstate
- files:
- - origin: configure-ovs.sh
-   path: /root/configure-ovs.sh
-   render: false
- - origin: configure-ovs-nmstate.sh
-   path: /root/configure-ovs-nmstate.sh
-   render: false
+   - git clone https://github.com/qinqon/configure-ovs-nmstate

@@ -445,10 +445,10 @@ get_default_interface() {
     # never use the interface that's specified in extra_bridge_file
     # never use br-ex1
     export extra_bridge
-    iface=$(nmstatectl show --json |jq -r '.routes.running[] | select(
+    iface=$(nmstatectl show --json |jq --arg extra_bridge "$extra_bridge" '.routes.running[] | select(
         (.destination == "0.0.0.0/0" or .destination == "fe80::/64")
-        and .["next-hop-interface"] != "br-ex1" 
-        and .["next-hop-interface"] != env.extra_bridge) 
+        and .["next-hop-interface"] != "br-ex1"
+        and .["next-hop-interface"] != $extra_bridge)
         | .["next-hop-interface"]')
     if [[ -n "${iface}" ]]; then
       break
@@ -456,8 +456,8 @@ get_default_interface() {
     counter=$((counter+1))
     sleep 5
   done
-  # if the default interface does not point out of br-ex or br-ex1
-  if [ "${iface}" != "br-ex" ] && [ "${iface}" != "br-ex1" ]; then
+  # if the default interface does not point out of br-ex
+  if [ "${iface}" != "br-ex" ] ; then
     # determine if an interface default hint exists from a previous run
     # and if the interface has a valid default route
     iface_default_hint=$(get_iface_default_hint "${iface_default_hint_file}")
@@ -466,13 +466,11 @@ get_default_interface() {
       # start wherever count left off in the previous loop
       # allow this for one more iteration than the previous loop
       while [ ${counter} -le 12 ]; do
-        # check ipv4
-        if [ "$(ip route show default dev "${iface_default_hint}")" != "" ]; then
-          iface="${iface_default_hint}"
-          break
-        fi
-        # check ipv6
-        if [ "$(ip -6 route show default dev "${iface_default_hint}")" != "" ]; then
+        # check ipv4 and ipv6
+        if [ "$(nmstatectl show --json |jq --arg iface_default_hint "$iface_default_hint" '
+               .routes.running[] | select((
+                       .destination == "0.0.0.0/0" or .destination == "fe80::/64" )
+                       and .["next-hop-interface"] == $iface_default_hint )')" != "" ]; then
           iface="${iface_default_hint}"
           break
         fi
