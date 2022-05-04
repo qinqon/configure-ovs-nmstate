@@ -15,3 +15,6 @@ configure-ovs:
  - origin: configure-ovs.sh
    path: /root/configure-ovs.sh
    render: false
+ - origin: configure-ovs-nmstate.sh
+   path: /root/configure-ovs-nmstate.sh
+   render: false
