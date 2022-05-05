@@ -4,3 +4,4 @@ Nnmstate limitations:
 - "dhcp-duid" cannot be customize is harcoded to "ll" for "auto" cons.
 - "addr-gen-mode" cannot be customize is harcoded to "0" for "auto" cons.
 - Missing support for "team" connection type.
+- https://bugzilla.redhat.com/show_bug.cgi?id=2082034 (failed deleting ovs bridge)
