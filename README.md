@@ -1,7 +1,6 @@
 Nnmstate limitations:
-- "may-fail" not supported
-- "dhcp-client-id" cannot be customize is harcoded to "mac" for "auto" cons.
-- "dhcp-duid" cannot be customize is harcoded to "ll" for "auto" cons.
-- "addr-gen-mode" cannot be customize is harcoded to "0" for "auto" cons.
-- Missing support for "team" connection type.
-- https://bugzilla.redhat.com/show_bug.cgi?id=2082034 (failed deleting ovs bridge)
+- "may-fail" not supported: https://bugzilla.redhat.com/show_bug.cgi?id=2082042
+- "dhcp-client-id" not supported: https://bugzilla.redhat.com/show_bug.cgi?id=2082043
+- "dhcp-duid" not supported: https://bugzilla.redhat.com/show_bug.cgi?id=2082044
+- "addr-gen-mode" not supported: https://bugzilla.redhat.com/show_bug.cgi?id=2082045
+- failed deleting ovs bridge: https://bugzilla.redhat.com/show_bug.cgi?id=2082034: 
