@@ -158,8 +158,6 @@ if [ "$1" == "OVNKubernetes" ]; then
   extra_bridge_file="${ovnk_config_dir}/extra_bridge"
   # make sure to create ovnk_config_dir if it does not exist, yet
   mkdir -p "${ovnk_config_dir}"
-  # make sure to create ovnk_var_dir if it does not exist, yet
-  mkdir -p "${ovnk_var_dir}"
   # on every boot we rollback and generate the configuration again, to take
   # in any changes that have possibly been applied in the standard
   # configuration sources

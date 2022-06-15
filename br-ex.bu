@@ -1,0 +1,58 @@
+variant: fcos
+version: 1.4.0
+storage:
+  files: 
+    - path: /etc/nmstate/br-ex.yaml
+      overwrite: true
+      contents:
+        inline: | 
+           interfaces:
+            - name: $DEFAULT_GW_NIC
+              type: ethernet
+              state: up
+            - name: br-ex
+              type: ovs-interface
+              copy-mac-from: $DEFAULT_GW_NIC
+              state: up 
+              ipv4: 
+                enabled: true
+                dhcp: true
+              ipv6:
+                enabled: true
+                dhcp: true
+                autoconf: true                                                                 
+            - name: br-ex                                                                
+              description: ovs bridge with eth1 as a port                               
+              type: ovs-bridge                                                          
+              state: up                                                                 
+              bridge:                                                                   
+                port:                                                                   
+                - name: br-ex
+                - name: $DEFAULT_GW_NIC
+    - path: /etc/nmstate/replace-and-apply.sh
+      overwrite: true
+      mode: 0755
+      contents: 
+        inline: |
+          #!/bin/bash -xe
+          export DEFAULT_GW_NIC=$(nmstatectl show --json | \
+            jq -r '.routes.running | map(select(.destination == "0.0.0.0/0"))[0]["next-hop-interface"]')
+          envsubst < $1 | nmstatectl apply
+
+systemd:
+  units:
+    - name: nmstatectl.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Nmstate apply
+        After=network-online.target openvswitch.service
+        Wants=network-online.target
+        Requires=openvswitch.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/etc/nmstate/replace-and-apply.sh /etc/nmstate/br-ex.yaml
+
+        [Install]
+        WantedBy=multi-user.target
