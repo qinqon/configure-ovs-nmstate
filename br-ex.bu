@@ -2,17 +2,23 @@ variant: fcos
 version: 1.4.0
 storage:
   files: 
-    - path: /etc/nmstate/br-ex.yaml
+    - path: /etc/nmstate/br-ex-policy.yaml
       overwrite: true
       contents:
         inline: | 
+          capture:
+            default-gw-route: routes.running.destination=="0.0.0.0/0"
+            default-gw-iface: interfaces.name==capture.default-gw-route.routes.running.0.next-hop-interface
+          desiredState:
            interfaces:
-            - name: $DEFAULT_GW_NIC
+            - name: "{{ capture.default-gw-iface.interfaces.0.name }}"
+              description: configured by nmstatectl
               type: ethernet
               state: up
             - name: br-ex
+              description: configured by nmstatectl
               type: ovs-interface
-              copy-mac-from: $DEFAULT_GW_NIC
+              copy-mac-from: "{{ capture.default-gw-iface.interfaces.0.name }}"
               state: up 
               ipv4: 
                 enabled: true
@@ -22,22 +28,31 @@ storage:
                 dhcp: true
                 autoconf: true                                                                 
             - name: br-ex                                                                
-              description: ovs bridge with eth1 as a port                               
+              description: ovs bridge with eth1 as a port configured by nmstatectl
               type: ovs-bridge                                                          
               state: up                                                                 
               bridge:                                                                   
                 port:                                                                   
                 - name: br-ex
-                - name: $DEFAULT_GW_NIC
+                - name: "{{ capture.default-gw-iface.interfaces.0.name }}"
     - path: /etc/nmstate/replace-and-apply.sh
       overwrite: true
       mode: 0755
       contents: 
         inline: |
           #!/bin/bash -xe
-          export DEFAULT_GW_NIC=$(nmstatectl show --json | \
-            jq -r '.routes.running | map(select(.destination == "0.0.0.0/0"))[0]["next-hop-interface"]')
-          envsubst < $1 | nmstatectl apply
+          export HOME=/root
+          if [ ! -f /usr/local/bin/nmpolicyctl ]; then 
+          	curl -L https://github.com/nmstate/nmpolicy/releases/download/v0.3.0/nmpolicy_0.3.0_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin/
+          fi
+          whoami
+          nmstatectl show
+          env
+          if ! ip link show dev br-ex ; then
+          	
+                nmstatectl show | nmpolicy gen /etc/nmstate/br-ex-policy.yaml | nmstatectl apply
+          	touch /run/configure-ovs-boot-done
+          fi
 
 systemd:
   units:
